@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signup - FileVault</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Create Account</h2>
+    <form id="signupForm">
+      <input type="text" name="username" placeholder="Username" required />
+      <input type="email" name="email" placeholder="Email" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <button type="submit">Sign Up</button>
+    </form>
+    <p>Already have an account? <a href="/login.html">Login here</a></p>
+  </div>
+
+  <script>
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        username: form.username.value,
+        email: form.email.value,
+        password: form.password.value
+      };
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      alert(result.message || 'Signup successful!');
+      if (res.ok) location.href = '/login.html';
+    });
+  </script>
+</body>
+</html>
