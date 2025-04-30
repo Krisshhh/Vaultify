@@ -72,7 +72,7 @@ exports.downloadFile = async (req, res) => {
     const fileDoc = await File.findOne({ downloadToken: token });
 
     if (!fileDoc) {
-      return res.status(404).json({ message: 'File not found' });
+      return res.status(404).json({ message: 'File not found or expired' });
     }
 
     if (fileDoc.expiresAt < new Date()) {
