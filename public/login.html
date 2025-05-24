@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -49,6 +49,102 @@
       } catch (err) {
         console.error("Login error:", err);
         alert("Something went wrong");
+      }
+    });
+  </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - FileVault</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="email" id="email" name="email" placeholder="Email" required />
+      <input type="password" id="password" name="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
+
+    <form id="otpForm" style="display: none; margin-top: 20px;">
+      <input type="text" id="otp" name="otp" placeholder="Enter OTP" required />
+      <button type="submit">Verify OTP</button>
+    </form>
+
+    <p>Don't have an account? <a href="/signup.html">Sign up here</a></p>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const otpForm = document.getElementById("otpForm");
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 200 && data.message === "OTP sent to email") {
+          alert("OTP sent to your email.");
+          loginForm.style.display = "none";
+          otpForm.style.display = "block";
+        } else if (res.ok && data.token) {
+          localStorage.setItem("token", data.token);
+          alert("Login successful!");
+          window.location.href = "/upload.html";
+        } else {
+          alert(data.message || "Login failed");
+        }
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("Something went wrong");
+      }
+    });
+
+    otpForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const otp = document.getElementById("otp").value;
+      const email = document.getElementById("email").value.trim();
+
+      try {
+        const res = await fetch("/api/auth/verify-otp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, otp })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.token) {
+          localStorage.setItem("token", data.token);
+          alert("OTP verified! Login successful.");
+          window.location.href = "/upload.html";
+        } else {
+          alert(data.message || "OTP verification failed");
+        }
+      } catch (err) {
+        console.error("OTP verification error:", err);
+        alert("Something went wrong during OTP verification");
       }
     });
   </script>

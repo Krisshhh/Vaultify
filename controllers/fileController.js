@@ -51,7 +51,7 @@ exports.uploadFile = async (req, res) => {
       message: 'File uploaded & encrypted successfully',
       downloadLink: `/api/files/download/${fileDoc.downloadToken}`
     });
-
+    
   } catch (error) {
     console.error('Upload Error:', {
       message: error.message,

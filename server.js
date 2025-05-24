@@ -7,13 +7,17 @@ const path = require('path');
 const fs = require('fs');
 
 dotenv.config();
+
+
 // Add this debug check
-console.log('AWS Credential Verification:', {
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID?.length ? 'PRESENT' : 'MISSING',
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY?.length ? 'PRESENT' : 'MISSING',
-  region: process.env.AWS_REGION,
-  bucket: process.env.AWS_BUCKET_NAME
-});
+// console.log('AWS Credential Verification:', {
+//   accessKeyId: process.env.AWS_ACCESS_KEY_ID?.length ? 'PRESENT' : 'MISSING',
+//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY?.length ? 'PRESENT' : 'MISSING',
+//   region: process.env.AWS_REGION,
+//   bucket: process.env.AWS_BUCKET_NAME
+// });
+// console.log('ENV TEST:', process.env.EMAIL_USER, process.env.EMAIL_PASS ? 'PASS FOUND' : 'MISSING');
+
 
 const app = express();
 
