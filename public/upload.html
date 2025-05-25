@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -34,5 +34,55 @@
         : `<p>Error: ${result.message}</p>`;
     });
   </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload File - FileVault</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Upload a File</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="file" required />
+      <button type="submit">Upload & Encrypt</button>
+    </form>
+    <div id="responseMsg"></div>
+    <a href="/index.html">← Back to Home</a>
+  </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Unauthorized access. Please log in first.");
+      window.location.href = "/login.html";
+      return;
+    }
+
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const res = await fetch("/api/files/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      const result = await res.json();
+      document.getElementById("responseMsg").innerHTML = res.ok
+        ? `<p>Success! <a href="${result.downloadLink}">Download Link</a></p>`
+        : `<p>Error: ${result.message}</p>`;
+    });
+  });
+</script>
+
+
 </body>
 </html>
