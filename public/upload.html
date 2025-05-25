@@ -58,7 +58,8 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const token = localStorage.getItem("token");
+    // const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token"); 
     if (!token) {
       alert("Unauthorized access. Please log in first.");
       window.location.href = "/login.html";

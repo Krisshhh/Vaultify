@@ -79,7 +79,8 @@
         const data = await res.json();
 
         if (res.ok && data.token) {
-          localStorage.setItem("token", data.token);
+          // localStorage.setItem("token", data.token);
+          sessionStorage.setItem("token", data.token);
           alert("OTP verified! Login successful.");
           window.location.href = "/upload.html";
         } else {
