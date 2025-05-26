@@ -23,7 +23,7 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static('public'));
 
@@ -32,9 +32,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 
 // Ensure uploads folder exists
-if (!fs.existsSync('./uploads')) {
-  fs.mkdirSync('./uploads');
-}
+// if (!fs.existsSync('./uploads')) {
+//   fs.mkdirSync('./uploads');
+// }
 
 // DB & Server Start
 mongoose.connect(process.env.MONGO_URI)
