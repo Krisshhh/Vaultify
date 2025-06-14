@@ -29,16 +29,13 @@
 
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
 
       try {
         const res = await fetch("/api/auth/login", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
         });
 
@@ -48,10 +45,6 @@
           alert("OTP sent to your email.");
           loginForm.style.display = "none";
           otpForm.style.display = "block";
-        } else if (res.ok && data.token) {
-          localStorage.setItem("token", data.token);
-          alert("Login successful!");
-          window.location.href = "/upload.html";
         } else {
           alert(data.message || "Login failed");
         }
@@ -63,26 +56,22 @@
 
     otpForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const otp = document.getElementById("otp").value;
       const email = document.getElementById("email").value.trim();
 
       try {
         const res = await fetch("/api/auth/verify-otp", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, otp })
         });
 
         const data = await res.json();
 
         if (res.ok && data.token) {
-          // localStorage.setItem("token", data.token);
           sessionStorage.setItem("token", data.token);
           alert("OTP verified! Login successful.");
-          window.location.href = "/upload.html";
+          window.location.href = "/dashboard.html";
         } else {
           alert(data.message || "OTP verification failed");
         }

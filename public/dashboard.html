@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - FileVault</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>User Dashboard</h2>
+    <div id="dashboardData">
+      <!-- User data will be dynamically loaded -->
+    </div>
+
+    <button onclick="location.href='/upload.html'">Upload New File</button>
+    <button onclick="logout()" style="margin-left: 10px;">Logout</button>
+  </div>
+
+  <script>
+    const token = sessionStorage.getItem("token");
+    if (!token) {
+      alert("Unauthorized access. Please login first.");
+      window.location.href = "/login.html";
+    }
+
+    async function fetchDashboardData() {
+      try {
+        const res = await fetch("/api/files/dashboard", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            alert("Session expired. Please log in again.");
+            sessionStorage.removeItem("token");
+            window.location.href = "/login.html";
+            return;
+          } else {
+            throw new Error(data.message);
+          }
+        }
+
+        const fileListHTML = data.recentFiles.length > 0
+          ? data.recentFiles.map(file => `
+              <li>
+                <strong>${file.originalName}</strong> (${(file.size / 1024).toFixed(2)} KB)
+              </li>
+            `).join('')
+          : "<li>No recent files</li>";
+
+        document.getElementById("dashboardData").innerHTML = `
+  <p><strong>Total Files Uploaded:</strong> ${data.totalFiles}</p>
+  <p><strong>Total Storage Used:</strong> ${data.storageUsed.toFixed(2)} KB</p>
+  <p><strong>Recent Uploads:</strong></p>
+  <ul>
+    ${data.recentFiles.map(file => `<li>${file.originalName}</li>`).join('')}
+  </ul>
+`;
+      } catch (err) {
+        alert("Failed to load dashboard: " + err.message);
+        document.getElementById("dashboardData").innerHTML = "<p>Error loading data.</p>";
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem("token");
+      window.location.href = "/login.html";
+    }
+
+    fetchDashboardData();
+  </script>
+</body>
+</html>

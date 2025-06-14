@@ -1,5 +1,8 @@
 const crypto = require('crypto');
 const File = require('../models/File');
+const RecentUpload = require('../models/RecentUpload');
+// const UserStats = require('../models/UserStats');
+
 const { 
   encryptFileInMemory 
 } = require('../utils/encryptor');
@@ -42,10 +45,27 @@ exports.uploadFile = async (req, res) => {
       mimetype: file.mimetype,
       size: file.size,
       downloadToken: crypto.randomUUID(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours expiry
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     await fileDoc.save();
+
+
+await RecentUpload.create({
+  user: req.user.id,
+  originalName: req.file.originalname,
+  size: Math.ceil(req.file.size / 1024) 
+});
+    
+const recent = await RecentUpload.find({ user: req.user.id })
+  .sort({ createdAt: -1 })
+  .skip(5);
+
+if (recent.length > 0) {
+  const idsToDelete = recent.map(doc => doc._id);
+  await RecentUpload.deleteMany({ _id: { $in: idsToDelete } });
+}
+    
 
     res.status(200).json({
       message: 'File uploaded & encrypted successfully',
@@ -114,5 +134,27 @@ exports.downloadFile = async (req, res) => {
       message: 'Download failed',
       error: error.message
     });
+  }
+};
+
+exports.getUserDashboard = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const recentFiles = await RecentUpload.find({ user: userId })
+      .sort({ createdAt: -1 });
+
+    const totalFiles = recentFiles.length;
+    const storageUsed = recentFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+
+    return res.json({
+      totalFiles,
+      storageUsed,
+      recentFiles
+    });
+
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    res.status(500).json({ message: "Failed to load dashboard" });
   }
 };
