@@ -11,10 +11,10 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // decoded should include `id`
+    req.user = decoded;
     next();
   } catch (err) {
-    console.error("Token verification failed:", err);
+    console.error("Token verification failed:", err.message);
     return res.status(401).json({ message: 'Session expired. Please login again.' });
   }
 };

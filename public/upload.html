@@ -31,16 +31,22 @@
       document.getElementById("uploadForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const res = await fetch("/api/files/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData
-        });
 
-        const result = await res.json();
-        document.getElementById("responseMsg").innerHTML = res.ok
-          ? `<p>Success! <a href="${result.downloadLink}" target="_blank">Download Link</a></p>`
-          : `<p>Error: ${result.message}</p>`;
+        try {
+          const res = await fetch("/api/files/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+
+          const result = await res.json();
+
+          document.getElementById("responseMsg").innerHTML = res.ok
+            ? `<p>Success! <a href="${result.downloadLink}" target="_blank">Download Link</a></p>`
+            : `<p>Error: ${result.message}</p>`;
+        } catch (err) {
+          document.getElementById("responseMsg").innerHTML = `<p>Upload failed. Try again.</p>`;
+        }
       });
     });
   </script>

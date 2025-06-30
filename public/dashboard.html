@@ -46,19 +46,17 @@
         const fileListHTML = data.recentFiles.length > 0
           ? data.recentFiles.map(file => `
               <li>
-                <strong>${file.originalName}</strong> (${(file.size / 1024).toFixed(2)} KB)
+                <strong>${file.originalName}</strong> (${(file.size || 0).toFixed(2)} KB)
               </li>
             `).join('')
           : "<li>No recent files</li>";
 
         document.getElementById("dashboardData").innerHTML = `
-  <p><strong>Total Files Uploaded:</strong> ${data.totalFiles}</p>
-  <p><strong>Total Storage Used:</strong> ${data.storageUsed.toFixed(2)} KB</p>
-  <p><strong>Recent Uploads:</strong></p>
-  <ul>
-    ${data.recentFiles.map(file => `<li>${file.originalName}</li>`).join('')}
-  </ul>
-`;
+          <p><strong>Total Files Uploaded:</strong> ${data.totalFiles}</p>
+          <p><strong>Total Storage Used:</strong> ${data.storageUsed.toFixed(2)} KB</p>
+          <p><strong>Recent Uploads:</strong></p>
+          <ul>${fileListHTML}</ul>
+        `;
       } catch (err) {
         alert("Failed to load dashboard: " + err.message);
         document.getElementById("dashboardData").innerHTML = "<p>Error loading data.</p>";

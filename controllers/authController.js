@@ -1,7 +1,9 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const Otp = require('../models/Otp');
-const { sendOTP } = require('../utils/mailer');
+const { sendOTP, sendResetLink } = require('../utils/mailer');
+const ResetToken = require('../models/resetToken');
 
 const createToken = (user) => {
   return jwt.sign(
@@ -69,4 +71,36 @@ exports.verifyOtp = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'OTP verification failed', error: err.message });
   }
+};
+
+exports.requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ message: 'Email not registered' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+  await ResetToken.create({ email, token, expiresAt: expires });
+  await sendResetLink(email, token);
+
+  res.json({ message: 'Reset link sent to email' });
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+
+  const record = await ResetToken.findOne({ token });
+  if (!record || record.expiresAt < new Date()) {
+    return res.status(400).json({ message: 'Token expired or invalid' });
+  }
+
+  const user = await User.findOne({ email: record.email });
+  if (!user) return res.status(400).json({ message: 'User not found' });
+
+  user.password = password;
+  await user.save();
+  await ResetToken.deleteMany({ email: record.email });
+
+  res.json({ message: 'Password reset successful' });
 };
