@@ -36,11 +36,18 @@ app.use('/api/files', fileRoutes);
 //   fs.mkdirSync('./uploads');
 // }
 
-// DB & Server Start
+// DB Connection
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    app.listen(process.env.PORT, () =>
-      console.log(`Server running on http://localhost:${process.env.PORT}`)
-    );
-  })
+  .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('DB Connection Error:', err));
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+// Export for Vercel
+module.exports = app;
