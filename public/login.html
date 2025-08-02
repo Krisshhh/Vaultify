@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - FileVault</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
 </head>
 <body>
   <div class="container">
@@ -12,29 +13,82 @@
     <form id="loginForm">
       <input type="email" id="email" name="email" placeholder="Email" required />
       <input type="password" id="password" name="password" placeholder="Password" required />
+      <div id="captcha-container"></div>
       <button type="submit">Login</button>
     </form>
 
-    <form id="otpForm" style="display: none; margin-top: 20px;">
-      <input type="text" id="otp" name="otp" placeholder="Enter OTP" required />
-      <button type="submit">Verify OTP</button>
-    </form>
+    <div id="adminSection" style="display: none; margin-top: 20px;">
+      <h3>Admin Login</h3>
+      <form id="adminLoginForm">
+        <input type="email" id="adminEmail" name="adminEmail" placeholder="Admin Email" required />
+        <input type="password" id="adminPassword" name="adminPassword" placeholder="Admin Password" required />
+        <button type="submit">Admin Login</button>
+      </form>
+      <form id="adminOtpForm" style="display: none; margin-top: 10px;">
+        <input type="text" id="adminOtp" name="adminOtp" placeholder="Enter Admin OTP" required />
+        <button type="submit">Verify Admin OTP</button>
+      </form>
+    </div>
 
     <p>Don't have an account? <a href="signup.html">Sign up</a></p>
     <p><a href="forgot_pwd.html">Forgot Password?</a></p>
+    <p><button onclick="toggleAdminLogin()">Admin Login</button></p>
   </div>
 
   <script>
     const loginForm = document.getElementById("loginForm");
-    const otpForm = document.getElementById("otpForm");
+    const adminLoginForm = document.getElementById("adminLoginForm");
+    const adminOtpForm = document.getElementById("adminOtpForm");
+    const adminSection = document.getElementById("adminSection");
 
+    function toggleAdminLogin() {
+      adminSection.style.display = adminSection.style.display === "none" ? "block" : "none";
+    }
+
+    // Regular user login with CAPTCHA
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
+      const captchaToken = grecaptcha.getResponse();
+
+      if (!captchaToken) {
+        alert("Please complete the CAPTCHA");
+        return;
+      }
 
       try {
         const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, captchaToken })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.token) {
+          sessionStorage.setItem("token", data.token);
+          alert("Login successful!");
+          window.location.href = "/dashboard.html";
+        } else {
+          alert(data.message || "Login failed");
+          grecaptcha.reset();
+        }
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("Something went wrong");
+        grecaptcha.reset();
+      }
+    });
+
+    // Admin login
+    adminLoginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("adminEmail").value.trim();
+      const password = document.getElementById("adminPassword").value;
+
+      try {
+        const res = await fetch("/api/auth/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
@@ -42,26 +96,27 @@
 
         const data = await res.json();
 
-        if (res.status === 200 && data.message === "OTP sent to email") {
-          alert("OTP sent to your email.");
-          loginForm.style.display = "none";
-          otpForm.style.display = "block";
+        if (res.status === 200 && data.message === "OTP sent to admin email") {
+          alert("OTP sent to your admin email.");
+          adminLoginForm.style.display = "none";
+          adminOtpForm.style.display = "block";
         } else {
-          alert(data.message || "Login failed");
+          alert(data.message || "Admin login failed");
         }
       } catch (err) {
-        console.error("Login error:", err);
+        console.error("Admin login error:", err);
         alert("Something went wrong");
       }
     });
 
-    otpForm.addEventListener("submit", async (e) => {
+    // Admin OTP verification
+    adminOtpForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const otp = document.getElementById("otp").value;
-      const email = document.getElementById("email").value.trim();
+      const otp = document.getElementById("adminOtp").value;
+      const email = document.getElementById("adminEmail").value.trim();
 
       try {
-        const res = await fetch("/api/auth/verify-otp", {
+        const res = await fetch("/api/auth/admin/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, otp })
@@ -71,16 +126,49 @@
 
         if (res.ok && data.token) {
           sessionStorage.setItem("token", data.token);
-          alert("OTP verified! Login successful.");
-          window.location.href = "/dashboard.html";
+          sessionStorage.setItem("userRole", "admin");
+          alert("Admin OTP verified! Login successful.");
+          window.location.href = "/admin-dashboard.html";
         } else {
-          alert(data.message || "OTP verification failed");
+          alert(data.message || "Admin OTP verification failed");
         }
       } catch (err) {
-        console.error("OTP verification error:", err);
-        alert("Something went wrong during OTP verification");
+        console.error("Admin OTP verification error:", err);
+        alert("Something went wrong during admin OTP verification");
       }
     });
+
+    // Load CAPTCHA configuration and initialize
+    async function initializeCaptcha() {
+      try {
+        const response = await fetch('/api/auth/captcha-config');
+        const config = await response.json();
+        
+        if (config.siteKey) {
+          const captchaContainer = document.getElementById('captcha-container');
+          captchaContainer.innerHTML = `<div class="g-recaptcha" data-sitekey="${config.siteKey}"></div>`;
+          
+          // Re-render reCAPTCHA after adding to DOM
+          if (typeof grecaptcha !== 'undefined' && grecaptcha.render) {
+            setTimeout(() => {
+              grecaptcha.render(captchaContainer.querySelector('.g-recaptcha'));
+            }, 100);
+          }
+        } else {
+          console.error('CAPTCHA site key not configured');
+          document.getElementById('captcha-container').innerHTML = '<p style="color: red;">CAPTCHA not configured. Please set up your reCAPTCHA keys.</p>';
+        }
+      } catch (err) {
+        console.error('Failed to load CAPTCHA config:', err);
+        document.getElementById('captcha-container').innerHTML = '<p style="color: red;">Failed to load CAPTCHA. Please refresh the page.</p>';
+      }
+    }
+
+    // Initialize CAPTCHA when page loads
+    document.addEventListener('DOMContentLoaded', initializeCaptcha);
+    
+    // Also initialize when reCAPTCHA script loads
+    window.onRecaptchaLoad = initializeCaptcha;
   </script>
 </body>
 </html>

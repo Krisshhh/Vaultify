@@ -3,33 +3,26 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const shareRoutes = require('./routes/shareRoutes');
 const path = require('path');
 const fs = require('fs');
 
 dotenv.config();
 
-
-// Add this debug check
-// console.log('AWS Credential Verification:', {
-//   accessKeyId: process.env.AWS_ACCESS_KEY_ID?.length ? 'PRESENT' : 'MISSING',
-//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY?.length ? 'PRESENT' : 'MISSING',
-//   region: process.env.AWS_REGION,
-//   bucket: process.env.AWS_BUCKET_NAME
-// });
-// console.log('ENV TEST:', process.env.EMAIL_USER, process.env.EMAIL_PASS ? 'PASS FOUND' : 'MISSING');
-
-
 const app = express();
 
 // Middleware
-app.use(express.json());
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static('public'));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.set('trust proxy', 1);
 
-// Routes
+// Static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/share', shareRoutes);
 
 // Ensure uploads folder exists
 // if (!fs.existsSync('./uploads')) {

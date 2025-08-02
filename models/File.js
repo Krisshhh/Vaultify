@@ -7,6 +7,7 @@ const fileSchema = new mongoose.Schema({
   mimetype: { type: String, required: true },
   size: { type: Number, required: true },
   downloadToken: { type: String, required: true, unique: true },
+  uploadDate: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true }
 }, { timestamps: true });
 

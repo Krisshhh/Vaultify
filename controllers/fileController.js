@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const File = require('../models/File');
 const RecentUpload = require('../models/RecentUpload');
-// const UserStats = require('../models/UserStats');
+const Analytics = require('../models/Analytics');
 
 const { 
   encryptFileInMemory 
@@ -50,12 +50,24 @@ exports.uploadFile = async (req, res) => {
 
     await fileDoc.save();
 
+    // Track upload analytics
+    await Analytics.create({
+      userId: req.user.id,
+      eventType: 'file_upload',
+      fileId: fileDoc._id,
+      metadata: {
+        fileSize: file.size,
+        fileType: file.mimetype,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
 
-await RecentUpload.create({
-  user: req.user.id,
-  originalName: req.file.originalname,
-  size: Math.ceil(req.file.size / 1024) 
-});
+    await RecentUpload.create({
+      user: req.user.id,
+      originalName: req.file.originalname,
+      size: Math.ceil(req.file.size / 1024) 
+    });
     
 const recent = await RecentUpload.find({ user: req.user.id })
   .sort({ createdAt: -1 })
@@ -118,11 +130,24 @@ exports.downloadFile = async (req, res) => {
     const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), iv);
 
     const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
+    
+    // Track download analytics
+    await Analytics.create({
+      userId: fileDoc.user,
+      eventType: 'file_download',
+      fileId: fileDoc._id,
+      metadata: {
+        fileSize: fileDoc.size,
+        fileType: fileDoc.mimetype,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
+    
     res.send(decrypted);
 
-    // Clean up
-    await File.deleteOne({ _id: fileDoc._id });
-    await deleteFile(fileDoc.encryptedName);
+    // Note: Files are not deleted after download to maintain file vault functionality
+    // Only expired files are cleaned up by a separate process
 
   } catch (error) {
     console.error('Download Error:', {
@@ -156,5 +181,72 @@ exports.getUserDashboard = async (req, res) => {
   } catch (err) {
     console.error("Dashboard error:", err);
     res.status(500).json({ message: "Failed to load dashboard" });
+  }
+};
+
+// Get user's files
+exports.getUserFiles = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const files = await File.find({ user: userId })
+      .sort({ uploadDate: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select('originalName size mimetype uploadDate downloadToken expiresAt');
+
+    const total = await File.countDocuments({ user: userId });
+
+    res.json({
+      files,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (err) {
+    console.error("Get user files error:", err);
+    res.status(500).json({ message: "Failed to get user files" });
+  }
+};
+
+// Delete user file
+exports.deleteUserFile = async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const userId = req.user.id;
+
+    const file = await File.findOne({ _id: fileId, user: userId });
+    if (!file) {
+      return res.status(404).json({ message: 'File not found or unauthorized' });
+    }
+
+    // Delete from S3
+    await deleteFile(file.encryptedName);
+
+    // Delete from database
+    await File.deleteOne({ _id: fileId });
+
+    // Track deletion analytics
+    await Analytics.create({
+      userId,
+      eventType: 'file_delete',
+      fileId,
+      metadata: {
+        fileSize: file.size,
+        fileType: file.mimetype,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
+
+    res.json({ message: 'File deleted successfully' });
+  } catch (err) {
+    console.error("Delete file error:", err);
+    res.status(500).json({ message: "Failed to delete file" });
   }
 };

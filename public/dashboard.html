@@ -9,12 +9,69 @@
 <body>
   <div class="container">
     <h2>User Dashboard</h2>
-    <div id="dashboardData">
-      <!-- User data will be dynamically loaded -->
+    
+    <div class="tab-buttons">
+      <button class="tab-button active" onclick="showTab('overview')">Overview</button>
+      <button class="tab-button" onclick="showTab('myFiles')">My Files</button>
+      <button class="tab-button" onclick="showTab('shared')">Shared with Me</button>
+      <button class="tab-button" onclick="showTab('myShares')">My Shares</button>
     </div>
 
-    <button onclick="location.href='/upload.html'">Upload New File</button>
-    <button onclick="logout()" style="margin-left: 10px;">Logout</button>
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+      <div id="dashboardData">
+        <!-- User data will be dynamically loaded -->
+      </div>
+      <button onclick="location.href='/upload.html'">Upload New File</button>
+    </div>
+
+    <!-- My Files Tab -->
+    <div id="myFiles" class="tab-content">
+      <h3>My Files</h3>
+      <div id="myFilesContainer">
+        <!-- Files will be loaded here -->
+      </div>
+    </div>
+
+    <!-- Shared Files Tab -->
+    <div id="shared" class="tab-content">
+      <h3>Files Shared with Me</h3>
+      <div id="sharedFilesContainer">
+        <!-- Shared files will be loaded here -->
+      </div>
+    </div>
+
+    <!-- My Shares Tab -->
+    <div id="myShares" class="tab-content">
+      <h3>Files I've Shared</h3>
+      <div id="mySharesContainer">
+        <!-- My shares will be loaded here -->
+      </div>
+    </div>
+
+    <button onclick="logout()" style="margin-top: 20px;">Logout</button>
+
+    <!-- File Share Modal -->
+    <div id="shareModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close" onclick="closeShareModal()">&times;</span>
+        <h3>Share File</h3>
+        <form id="shareForm">
+          <input type="hidden" id="shareFileId" />
+          <input type="email" id="shareEmail" placeholder="Email to share with" required />
+          <label>
+            <input type="checkbox" id="canDownload" checked /> Allow Download
+          </label>
+          <label>
+            <input type="checkbox" id="canView" checked /> Allow View
+          </label>
+          <label>
+            Expires in (days): <input type="number" id="expiresIn" min="1" max="365" />
+          </label>
+          <button type="submit">Share File</button>
+        </form>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -24,23 +81,72 @@
       window.location.href = "/login.html";
     }
 
+    let currentTab = 'overview';
+
+    // Tab switching functionality
+    function showTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      // Show selected tab
+      document.getElementById(tabName).classList.add('active');
+      document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+      
+      currentTab = tabName;
+      
+      // Load data for the tab
+      switch(tabName) {
+        case 'overview':
+          fetchDashboardData();
+          break;
+        case 'myFiles':
+          loadMyFiles();
+          break;
+        case 'shared':
+          loadSharedFiles();
+          break;
+        case 'myShares':
+          loadMyShares();
+          break;
+      }
+    }
+
+    // Make authenticated requests
+    async function makeAuthRequest(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...options.headers
+        }
+      });
+
+      if (response.status === 401) {
+        alert('Session expired. Please login again.');
+        sessionStorage.removeItem('token');
+        window.location.href = '/login.html';
+        return null;
+      }
+
+      return response;
+    }
+
+    // Load dashboard overview
     async function fetchDashboardData() {
       try {
-        const res = await fetch("/api/files/dashboard", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await makeAuthRequest("/api/files/dashboard");
+        if (!res) return;
 
         const data = await res.json();
 
         if (!res.ok) {
-          if (res.status === 401) {
-            alert("Session expired. Please log in again.");
-            sessionStorage.removeItem("token");
-            window.location.href = "/login.html";
-            return;
-          } else {
-            throw new Error(data.message);
-          }
+          throw new Error(data.message);
         }
 
         const fileListHTML = data.recentFiles.length > 0
@@ -63,12 +169,262 @@
       }
     }
 
+    // Load user's files
+    async function loadMyFiles() {
+      try {
+        const res = await makeAuthRequest('/api/files/my-files');
+        if (!res) return;
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message);
+        }
+
+        const filesHTML = data.files.length > 0
+          ? data.files.map(file => `
+              <div class="file-item">
+                <div class="file-info">
+                  <div class="file-name">${file.originalName}</div>
+                  <div class="file-meta">
+                    ${(file.size / 1024).toFixed(2)} KB • ${file.mimetype} • 
+                    Uploaded: ${new Date(file.uploadDate).toLocaleDateString()}
+                  </div>
+                </div>
+                <div class="file-actions">
+                  <button class="btn btn-small" onclick="downloadFile('${file.downloadToken}')">
+                    Download
+                  </button>
+                  <button class="btn btn-small" onclick="shareFile('${file._id}')">
+                    Share
+                  </button>
+                  <button class="btn btn-small" onclick="deleteFile('${file._id}')" style="background: #dc2626;">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            `).join('')
+          : '<p>No files uploaded yet.</p>';
+
+        document.getElementById('myFilesContainer').innerHTML = filesHTML;
+      } catch (err) {
+        console.error('Error loading files:', err);
+        document.getElementById('myFilesContainer').innerHTML = '<p>Error loading files.</p>';
+      }
+    }
+
+    // Load shared files
+    async function loadSharedFiles() {
+      try {
+        const res = await makeAuthRequest('/api/share/received');
+        if (!res) return;
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message);
+        }
+
+        const sharedHTML = data.sharedFiles.length > 0
+          ? data.sharedFiles.map(share => `
+              <div class="file-item">
+                <div class="file-info">
+                  <div class="file-name">${share.fileId.originalName}</div>
+                  <div class="file-meta">
+                    ${(share.fileId.size / 1024).toFixed(2)} KB • ${share.fileId.mimetype} •
+                    Shared by: ${share.sharedBy.username} (${share.sharedBy.email})
+                  </div>
+                </div>
+                <div class="file-actions">
+                  ${share.permissions.canDownload ? 
+                    `<button class="btn btn-small" onclick="downloadSharedFile('${share.shareToken}')">
+                      Download
+                    </button>` : ''}
+                  <button class="btn btn-small" onclick="viewSharedFile('${share.shareToken}')">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            `).join('')
+          : '<p>No files shared with you.</p>';
+
+        document.getElementById('sharedFilesContainer').innerHTML = sharedHTML;
+      } catch (err) {
+        console.error('Error loading shared files:', err);
+        document.getElementById('sharedFilesContainer').innerHTML = '<p>Error loading shared files.</p>';
+      }
+    }
+
+    // Load user's shares
+    async function loadMyShares() {
+      try {
+        const res = await makeAuthRequest('/api/share/sent');
+        if (!res) return;
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message);
+        }
+
+        const sharesHTML = data.mySharedFiles.length > 0
+          ? data.mySharedFiles.map(share => `
+              <div class="file-item">
+                <div class="file-info">
+                  <div class="file-name">${share.fileId.originalName}</div>
+                  <div class="file-meta">
+                    Shared with: ${share.sharedWith.username} (${share.sharedWith.email}) •
+                    Downloads: ${share.downloadCount} • 
+                    Created: ${new Date(share.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <div class="file-actions">
+                  <button class="btn btn-small" onclick="copyShareLink('${share.shareToken}')">
+                    Copy Link
+                  </button>
+                  <button class="btn btn-small" onclick="revokeShare('${share._id}')" style="background: #dc2626;">
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            `).join('')
+          : '<p>You haven\'t shared any files yet.</p>';
+
+        document.getElementById('mySharesContainer').innerHTML = sharesHTML;
+      } catch (err) {
+        console.error('Error loading my shares:', err);
+        document.getElementById('mySharesContainer').innerHTML = '<p>Error loading shares.</p>';
+      }
+    }
+
+    // File action functions
+    function downloadFile(token) {
+      window.open(`/api/files/download/${token}`, '_blank');
+    }
+
+    function downloadSharedFile(token) {
+      window.open(`/api/share/download/${token}`, '_blank');
+    }
+
+    async function viewSharedFile(token) {
+      try {
+        const res = await makeAuthRequest(`/api/share/view/${token}`);
+        if (!res) return;
+
+        const data = await res.json();
+        if (res.ok) {
+          alert(`File Details:\nName: ${data.file.filename}\nSize: ${(data.file.size / 1024).toFixed(2)} KB\nType: ${data.file.mimetype}\nShared by: ${data.sharedBy.username}`);
+        } else {
+          throw new Error(data.message);
+        }
+      } catch (err) {
+        alert('Failed to load file details: ' + err.message);
+      }
+    }
+
+    async function deleteFile(fileId) {
+      if (!confirm('Are you sure you want to delete this file?')) return;
+
+      try {
+        const res = await makeAuthRequest(`/api/files/delete/${fileId}`, {
+          method: 'DELETE'
+        });
+        
+        if (res && res.ok) {
+          alert('File deleted successfully');
+          loadMyFiles(); // Reload the files list
+        } else {
+          const data = await res.json();
+          throw new Error(data.message);
+        }
+      } catch (err) {
+        alert('Failed to delete file: ' + err.message);
+      }
+    }
+
+    function shareFile(fileId) {
+      document.getElementById('shareFileId').value = fileId;
+      document.getElementById('shareModal').style.display = 'block';
+    }
+
+    function closeShareModal() {
+      document.getElementById('shareModal').style.display = 'none';
+      document.getElementById('shareForm').reset();
+    }
+
+    async function revokeShare(shareId) {
+      if (!confirm('Are you sure you want to revoke this share?')) return;
+
+      try {
+        const res = await makeAuthRequest(`/api/share/revoke/${shareId}`, {
+          method: 'DELETE'
+        });
+        
+        if (res && res.ok) {
+          alert('Share revoked successfully');
+          loadMyShares(); // Reload the shares list
+        } else {
+          const data = await res.json();
+          throw new Error(data.message);
+        }
+      } catch (err) {
+        alert('Failed to revoke share: ' + err.message);
+      }
+    }
+
+    function copyShareLink(token) {
+      const link = `${window.location.origin}/api/share/view/${token}`;
+      navigator.clipboard.writeText(link).then(() => {
+        alert('Share link copied to clipboard!');
+      }).catch(() => {
+        prompt('Copy this link:', link);
+      });
+    }
+
+    // Handle share form submission
+    document.getElementById('shareForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fileId = document.getElementById('shareFileId').value;
+      const email = document.getElementById('shareEmail').value;
+      const canDownload = document.getElementById('canDownload').checked;
+      const canView = document.getElementById('canView').checked;
+      const expiresIn = document.getElementById('expiresIn').value;
+
+      try {
+        const res = await makeAuthRequest('/api/share/share', {
+          method: 'POST',
+          body: JSON.stringify({
+            fileId,
+            sharedWithEmail: email,
+            permissions: { canDownload, canView },
+            expiresIn: expiresIn ? parseInt(expiresIn) : null
+          })
+        });
+
+        if (res && res.ok) {
+          const data = await res.json();
+          alert(`File shared successfully! Share URL: ${data.shareUrl}`);
+          closeShareModal();
+          loadMyShares(); // Reload shares
+        } else {
+          const data = await res.json();
+          throw new Error(data.message);
+        }
+      } catch (err) {
+        alert('Failed to share file: ' + err.message);
+      }
+    });
+
     function logout() {
       sessionStorage.removeItem("token");
       window.location.href = "/login.html";
     }
 
-    fetchDashboardData();
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchDashboardData(); // Load initial overview
+    });
   </script>
 </body>
 </html>
