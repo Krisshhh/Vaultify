@@ -196,6 +196,8 @@ exports.accessSharedFile = async (req, res) => {
 exports.downloadSharedFile = async (req, res) => {
   try {
     const { token } = req.params;
+    const crypto = require('crypto');
+    const { getFile } = require('../utils/s3Service');
 
     const fileShare = await FileShare.findOne({ 
       shareToken: token, 
@@ -214,33 +216,58 @@ exports.downloadSharedFile = async (req, res) => {
       return res.status(403).json({ message: 'Download not permitted' });
     }
 
+    const fileDoc = fileShare.fileId;
+    
+    if (!fileDoc) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
     // Update download count
     fileShare.downloadCount += 1;
     fileShare.lastAccessed = new Date();
     await fileShare.save();
 
-    // Track analytics
-    await Analytics.create({
-      userId: fileShare.sharedWith,
-      eventType: 'file_download',
-      fileId: fileShare.fileId._id,
-      shareId: fileShare._id,
-      metadata: {
-        fileSize: fileShare.fileId.size,
-        fileType: fileShare.fileId.mimetype,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      }
-    });
+    try {
+      // Get file from S3
+      const { Body: fileStream } = await getFile(fileDoc.encryptedName);
 
-    // Here you would implement the actual file download logic
-    // This depends on your file storage implementation (S3, local, etc.)
-    res.json({
-      message: 'Download initiated',
-      filename: fileShare.fileId.originalName,
-      downloadUrl: `/api/files/download/${fileShare.fileId.downloadToken}` // Use downloadToken instead of _id
-    });
+      // Set response headers
+      res.setHeader('Content-Disposition', `attachment; filename="${fileDoc.originalName}"`);
+      res.setHeader('Content-Type', fileDoc.mimetype);
+
+      // Decrypt and stream to client
+      const chunks = [];
+      for await (const chunk of fileStream) {
+        chunks.push(chunk);
+      }
+      const encryptedBuffer = Buffer.concat(chunks);
+      const iv = encryptedBuffer.slice(0, 16);
+      const encryptedData = encryptedBuffer.slice(16);
+      const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), iv);
+
+      const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
+      
+      // Track analytics
+      await Analytics.create({
+        userId: fileShare.sharedWith,
+        eventType: 'file_download',
+        fileId: fileShare.fileId._id,
+        shareId: fileShare._id,
+        metadata: {
+          fileSize: fileShare.fileId.size,
+          fileType: fileShare.fileId.mimetype,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        }
+      });
+      
+      res.send(decrypted);
+    } catch (downloadError) {
+      console.error('File download error:', downloadError);
+      return res.status(500).json({ message: 'Failed to download file', error: downloadError.message });
+    }
   } catch (err) {
+    console.error('Shared file download error:', err);
     res.status(500).json({ message: 'Failed to download shared file', error: err.message });
   }
 };

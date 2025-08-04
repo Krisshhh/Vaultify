@@ -3,65 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard - FileVault</title>
+  <title>Admin Dashboard - Vaultify</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .admin-dashboard {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .stat-card {
-      background: #f5f5f5;
-      padding: 20px;
-      border-radius: 8px;
-      text-align: center;
-    }
-    .stat-number {
-      font-size: 2em;
-      font-weight: bold;
-      color: #007bff;
-    }
-    .users-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    .users-table th, .users-table td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    .users-table th {
-      background-color: #f2f2f2;
-    }
-    .tab-buttons {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .tab-button {
-      padding: 10px 20px;
-      border: none;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    .tab-button.active {
-      background: #0056b3;
-    }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
-  </style>
 </head>
-<body>
-  <div class="container">
+<body class="dashboard-layout">
+  <header class="main-header">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <a href="/admin-dashboard.html">Vaultify Admin</a>
+      </div>
+      <div class="navbar-center">
+        <ul class="navbar-menu">
+          <li><a href="#" onclick="showTab('overview')" class="nav-active">Overview</a></li>
+          <li><a href="#" onclick="showTab('users')">Users</a></li>
+          <li><a href="#" onclick="showTab('analytics')">Analytics</a></li>
+          <li><a href="#" onclick="showTab('system')">System</a></li>
+        </ul>
+      </div>
+      <div class="navbar-right">
+        <a href="#" onclick="logout()" class="btn btn-secondary btn-small">Logout</a>
+      </div>
+      <button class="navbar-toggle" aria-label="Toggle Navigation">
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+      </button>
+    </nav>
+  </header>
+  <main class="container">
     <div class="header">
       <h1>Admin Dashboard</h1>
       <button onclick="logout()">Logout</button>
@@ -140,9 +109,33 @@
         <!-- System health metrics will be loaded here -->
       </div>
     </div>
-  </div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <div id="loadingMessage">Loading...</div>
+      </div>
+    </div>
+  </main>
 
   <script>
+    // Mobile navbar toggle
+    const toggleButton = document.querySelector('.navbar-toggle');
+    const navbarMenu = document.querySelector('.navbar-menu');
+
+    if (toggleButton && navbarMenu) {
+      toggleButton.addEventListener('click', () => {
+        navbarMenu.classList.toggle('active');
+      });
+
+      // Close mobile menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toggleButton.contains(e.target) && !navbarMenu.contains(e.target)) {
+          navbarMenu.classList.remove('active');
+        }
+      });
+    }
     let currentTab = 'overview';
 
     function showTab(tabName) {
@@ -304,6 +297,7 @@
 
     async function loadAnalytics() {
       try {
+        showLoader('Loading analytics...');
         const period = document.getElementById('analyticsPeriod').value;
         
         const [userResponse, fileResponse] = await Promise.all([
@@ -311,25 +305,50 @@
           makeAuthRequest(`/api/admin/analytics/files?period=${period}`)
         ]);
         
+        hideLoader();
+        
         if (!userResponse || !fileResponse) return;
         
         const userData = await userResponse.json();
         const fileData = await fileResponse.json();
         
         // Display user analytics
+        const totalUserEvents = userData.userActivity.reduce((sum, event) => sum + event.count, 0);
+        const userActivityBreakdown = userData.userActivity.map(activity => 
+          `${activity._id}: ${activity.count}`
+        ).join('<br>');
+        
         document.getElementById('userAnalytics').innerHTML = `
-          <p>Active Users: ${userData.activeUsers}</p>
-          <p>User Activity Events: ${userData.userActivity.reduce((sum, event) => sum + event.count, 0)}</p>
+          <p><strong>Active Users:</strong> ${userData.activeUsers}</p>
+          <p><strong>Total Activity Events:</strong> ${totalUserEvents}</p>
+          <p><strong>User Registration Trends:</strong> ${userData.userTrends.length} days with registrations</p>
+          <div style="margin-top: 10px; font-size: 0.9em;">
+            <strong>Activity Breakdown:</strong><br>
+            ${userActivityBreakdown || 'No activity data'}
+          </div>
+          ${userData.debug ? `<div style="margin-top: 10px; font-size: 0.8em; color: #666;">
+            Debug: ${userData.debug.totalAnalytics} total analytics, ${userData.debug.recentAnalytics} recent
+          </div>` : ''}
         `;
         
         // Display file analytics
+        const totalUploads = fileData.uploadTrends.reduce((sum, trend) => sum + trend.count, 0);
+        const topFileTypes = fileData.fileTypes.slice(0, 3).map(type => 
+          `${type._id}: ${type.count}`
+        ).join('<br>');
+        
         document.getElementById('fileAnalytics').innerHTML = `
-          <p>Upload Trends: ${fileData.uploadTrends.length} days with uploads</p>
-          <p>File Types: ${fileData.fileTypes.length} different types</p>
-          <p>Popular Files: ${fileData.popularFiles.length} files with downloads</p>
+          <p><strong>Upload Trends:</strong> ${totalUploads} uploads in ${fileData.uploadTrends.length} days</p>
+          <p><strong>File Types:</strong> ${fileData.fileTypes.length} different types</p>
+          <p><strong>Popular Files:</strong> ${fileData.popularFiles.length} files with downloads</p>
+          <div style="margin-top: 10px; font-size: 0.9em;">
+            <strong>Top File Types:</strong><br>
+            ${topFileTypes || 'No file type data'}
+          </div>
         `;
         
       } catch (err) {
+        hideLoader();
         console.error('Error loading analytics:', err);
         alert('Failed to load analytics');
       }
@@ -360,6 +379,18 @@
         console.error('Error loading system health:', err);
         alert('Failed to load system health');
       }
+    }
+
+    function showLoader(message) {
+      const overlay = document.getElementById('loadingOverlay');
+      const loadingMessage = document.getElementById('loadingMessage');
+      loadingMessage.textContent = message || 'Loading...';
+      overlay.style.display = 'flex';
+    }
+
+    function hideLoader() {
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.style.display = 'none';
     }
 
     function logout() {

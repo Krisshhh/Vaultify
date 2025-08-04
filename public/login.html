@@ -3,39 +3,90 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - FileVault</title>
+  <title>Login - Vaultify</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
 </head>
-<body>
+<body class="with-navbar">
+  <header class="main-header">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <a href="/index.html">Vaultify</a>
+      </div>
+      <div class="navbar-center">
+        <ul class="navbar-menu">
+          <li><a href="/index.html">Home</a></li>
+          <li><a href="/index.html#features">Features</a></li>
+          <li><a href="/index.html#about">About</a></li>
+        </ul>
+      </div>
+      <div class="navbar-right">
+        <a href="/login.html" class="btn btn-secondary btn-small nav-active">Login</a>
+        <a href="/signup.html" class="btn btn-primary btn-small">Sign Up</a>
+      </div>
+      <button class="navbar-toggle" aria-label="Toggle Navigation">
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+      </button>
+    </nav>
+  </header>
+  
   <div class="container">
-    <h2>Login</h2>
-    <form id="loginForm">
-      <input type="email" id="email" name="email" placeholder="Email" required />
-      <input type="password" id="password" name="password" placeholder="Password" required />
-      <div id="captcha-container"></div>
-      <button type="submit">Login</button>
-    </form>
+    <div class="main-content">
+      <h2>Login to Vaultify</h2>
+      <form id="loginForm">
+        <input type="email" id="email" name="email" placeholder="Email" required />
+        <input type="password" id="password" name="password" placeholder="Password" required />
+        <div id="captcha-container"></div>
+        <button type="submit">Login</button>
+      </form>
 
-    <div id="adminSection" style="display: none; margin-top: 20px;">
-      <h3>Admin Login</h3>
-      <form id="adminLoginForm">
-        <input type="email" id="adminEmail" name="adminEmail" placeholder="Admin Email" required />
-        <input type="password" id="adminPassword" name="adminPassword" placeholder="Admin Password" required />
-        <button type="submit">Admin Login</button>
-      </form>
-      <form id="adminOtpForm" style="display: none; margin-top: 10px;">
-        <input type="text" id="adminOtp" name="adminOtp" placeholder="Enter Admin OTP" required />
-        <button type="submit">Verify Admin OTP</button>
-      </form>
+      <div id="adminSection" style="display: none; margin-top: 20px;">
+        <h3>Admin Login</h3>
+        <form id="adminLoginForm">
+          <input type="email" id="adminEmail" name="adminEmail" placeholder="Admin Email" required />
+          <input type="password" id="adminPassword" name="adminPassword" placeholder="Admin Password" required />
+          <button type="submit">Admin Login</button>
+        </form>
+        <form id="adminOtpForm" style="display: none; margin-top: 10px;">
+          <input type="text" id="adminOtp" name="adminOtp" placeholder="Enter Admin OTP" required />
+          <button type="submit">Verify Admin OTP</button>
+        </form>
+      </div>
+
+      <p>Don't have an account? <a href="signup.html">Sign up</a></p>
+      <p><a href="forgot_pwd.html">Forgot Password?</a></p>
+      <p><button onclick="toggleAdminLogin()">Admin Login</button></p>
+      
+      <!-- Loading Overlay -->
+      <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <div id="loadingMessage">Logging in...</div>
+        </div>
+      </div>
     </div>
-
-    <p>Don't have an account? <a href="signup.html">Sign up</a></p>
-    <p><a href="forgot_pwd.html">Forgot Password?</a></p>
-    <p><button onclick="toggleAdminLogin()">Admin Login</button></p>
   </div>
 
   <script>
+    // Mobile navbar toggle
+    const toggleButton = document.querySelector('.navbar-toggle');
+    const navbarMenu = document.querySelector('.navbar-menu');
+
+    if (toggleButton && navbarMenu) {
+      toggleButton.addEventListener('click', () => {
+        navbarMenu.classList.toggle('active');
+      });
+
+      // Close mobile menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toggleButton.contains(e.target) && !navbarMenu.contains(e.target)) {
+          navbarMenu.classList.remove('active');
+        }
+      });
+    }
+    
     const loginForm = document.getElementById("loginForm");
     const adminLoginForm = document.getElementById("adminLoginForm");
     const adminOtpForm = document.getElementById("adminOtpForm");
@@ -43,6 +94,18 @@
 
     function toggleAdminLogin() {
       adminSection.style.display = adminSection.style.display === "none" ? "block" : "none";
+    }
+    
+    function showLoader(message) {
+      const overlay = document.getElementById('loadingOverlay');
+      const loadingMessage = document.getElementById('loadingMessage');
+      loadingMessage.textContent = message || 'Loading...';
+      overlay.style.display = 'flex';
+    }
+
+    function hideLoader() {
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.style.display = 'none';
     }
 
     // Regular user login with CAPTCHA
@@ -58,12 +121,15 @@
       }
 
       try {
+        showLoader('Logging in...');
+        
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, captchaToken })
         });
 
+        hideLoader();
         const data = await res.json();
 
         if (res.ok && data.token) {
@@ -75,6 +141,7 @@
           grecaptcha.reset();
         }
       } catch (err) {
+        hideLoader();
         console.error("Login error:", err);
         alert("Something went wrong");
         grecaptcha.reset();
@@ -88,12 +155,15 @@
       const password = document.getElementById("adminPassword").value;
 
       try {
+        showLoader('Sending OTP...');
+        
         const res = await fetch("/api/auth/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
         });
 
+        hideLoader();
         const data = await res.json();
 
         if (res.status === 200 && data.message === "OTP sent to admin email") {
@@ -104,6 +174,7 @@
           alert(data.message || "Admin login failed");
         }
       } catch (err) {
+        hideLoader();
         console.error("Admin login error:", err);
         alert("Something went wrong");
       }
@@ -116,12 +187,15 @@
       const email = document.getElementById("adminEmail").value.trim();
 
       try {
+        showLoader('Verifying OTP...');
+        
         const res = await fetch("/api/auth/admin/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, otp })
         });
 
+        hideLoader();
         const data = await res.json();
 
         if (res.ok && data.token) {

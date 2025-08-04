@@ -3,19 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reset Password</title>
+  <title>Reset Password - Vaultify</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
-<body>
+<body class="with-navbar">
+  <header class="main-header">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <a href="/index.html">Vaultify</a>
+      </div>
+      <div class="navbar-center">
+        <ul class="navbar-menu">
+          <li><a href="/index.html">Home</a></li>
+          <li><a href="/index.html#features">Features</a></li>
+          <li><a href="/index.html#about">About</a></li>
+        </ul>
+      </div>
+      <div class="navbar-right">
+        <a href="/login.html" class="btn btn-secondary btn-small">Login</a>
+        <a href="/signup.html" class="btn btn-primary btn-small">Sign Up</a>
+      </div>
+      <button class="navbar-toggle" aria-label="Toggle Navigation">
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+      </button>
+    </nav>
+  </header>
+  
   <div class="container">
-    <h2>Reset Password</h2>
-    <form id="resetForm">
-      <input type="password" id="newPassword" placeholder="New Password" required />
-      <button type="submit">Reset Password</button>
-    </form>
+    <div class="main-content">
+      <h2>Reset Password</h2>
+      <form id="resetForm">
+        <input type="password" id="newPassword" placeholder="New Password" required />
+        <button type="submit">Reset Password</button>
+      </form>
+      <p><a href="/login.html">← Back to Login</a></p>
+    </div>
   </div>
 
   <script>
+    // Mobile navbar toggle
+    const toggleButton = document.querySelector('.navbar-toggle');
+    const navbarMenu = document.querySelector('.navbar-menu');
+
+    if (toggleButton && navbarMenu) {
+      toggleButton.addEventListener('click', () => {
+        navbarMenu.classList.toggle('active');
+      });
+
+      // Close mobile menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toggleButton.contains(e.target) && !navbarMenu.contains(e.target)) {
+          navbarMenu.classList.remove('active');
+        }
+      });
+    }
+    
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
 

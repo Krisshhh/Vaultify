@@ -3,11 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Upload File - FileVault</title>
+  <title>Upload File - Vaultify</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <div class="container">
+<body class="dashboard-layout">
+  <header class="main-header">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <a href="/dashboard.html">Vaultify</a>
+      </div>
+      <div class="navbar-center">
+        <ul class="navbar-menu">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="#" class="nav-active">Upload</a></li>
+        </ul>
+      </div>
+      <div class="navbar-right">
+        <a href="#" onclick="logout()" class="btn btn-secondary btn-small">Logout</a>
+      </div>
+      <button class="navbar-toggle" aria-label="Toggle Navigation">
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+      </button>
+    </nav>
+  </header>
+  <main class="container upload-page">
     <h2>Upload a File</h2>
     <form id="uploadForm" enctype="multipart/form-data">
       <input type="file" name="file" required />
@@ -17,9 +38,30 @@
     <div id="responseMsg"></div>
 
     <button onclick="location.href='/dashboard.html'" style="margin-top: 15px;">← Back to Dashboard</button>
-  </div>
+  </main>
 
   <script>
+    // Mobile navbar toggle
+    const toggleButton = document.querySelector('.navbar-toggle');
+    const navbarMenu = document.querySelector('.navbar-menu');
+
+    if (toggleButton && navbarMenu) {
+      toggleButton.addEventListener('click', () => {
+        navbarMenu.classList.toggle('active');
+      });
+
+      // Close mobile menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toggleButton.contains(e.target) && !navbarMenu.contains(e.target)) {
+          navbarMenu.classList.remove('active');
+        }
+      });
+    }
+
+    function logout() {
+      sessionStorage.removeItem("token");
+      window.location.href = "/login.html";
+    }
     document.addEventListener("DOMContentLoaded", () => {
       const token = sessionStorage.getItem("token");
       if (!token) {

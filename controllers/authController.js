@@ -19,6 +19,17 @@ exports.signup = async (req, res) => {
   try {
     const { username, email, password } = req.body;
     const user = await User.create({ username, email, password });
+    
+    // Track signup analytics
+    await Analytics.create({
+      userId: user._id,
+      eventType: 'user_signup',
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
+    
     const token = createToken(user);
     res.status(201).json({ token });
   } catch (err) {
@@ -46,6 +57,16 @@ exports.login = async (req, res) => {
     // Update last login time
     user.lastLogin = new Date();
     await user.save();
+    
+    // Track login analytics
+    await Analytics.create({
+      userId: user._id,
+      eventType: 'user_login',
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 

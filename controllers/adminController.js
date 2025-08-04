@@ -57,6 +57,8 @@ exports.getUserAnalytics = async (req, res) => {
     const { period = '30' } = req.query; // days
     const daysAgo = new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000);
     
+    console.log('Analytics query date range:', { daysAgo, period });
+    
     // User registration trends
     const userTrends = await User.aggregate([
       { $match: { createdAt: { $gte: daysAgo }, role: 'user' } },
@@ -85,13 +87,32 @@ exports.getUserAnalytics = async (req, res) => {
         }
       }
     ]);
+    
+    // Get total analytics count for debugging
+    const totalAnalytics = await Analytics.countDocuments();
+    const recentAnalytics = await Analytics.countDocuments({ timestamp: { $gte: daysAgo } });
+    
+    console.log('Analytics debug:', {
+      totalAnalytics,
+      recentAnalytics,
+      userTrends: userTrends.length,
+      activeUsers,
+      userActivity: userActivity.length
+    });
 
     res.json({
       userTrends,
       activeUsers,
-      userActivity
+      userActivity,
+      debug: {
+        totalAnalytics,
+        recentAnalytics,
+        queryPeriod: period,
+        queryDate: daysAgo
+      }
     });
   } catch (err) {
+    console.error('User analytics error:', err);
     res.status(500).json({ message: 'Failed to fetch user analytics', error: err.message });
   }
 };

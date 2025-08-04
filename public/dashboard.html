@@ -3,11 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard - FileVault</title>
+  <title>Dashboard - Vaultify</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <div class="container">
+<body class="dashboard-layout">
+  <header class="main-header">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <a href="/dashboard.html">Vaultify</a>
+      </div>
+      <div class="navbar-center">
+        <ul class="navbar-menu">
+          <li><a href="#" onclick="showTab('overview')" class="nav-active">Overview</a></li>
+          <li><a href="#" onclick="showTab('myFiles')">My Files</a></li>
+          <li><a href="#" onclick="showTab('shared')">Shared</a></li>
+          <li><a href="#" onclick="showTab('myShares')">My Shares</a></li>
+        </ul>
+      </div>
+      <div class="navbar-right">
+        <a href="upload.html" class="btn btn-primary btn-small">Upload</a>
+        <a href="#" onclick="logout()" class="btn btn-secondary btn-small">Logout</a>
+      </div>
+      <button class="navbar-toggle" aria-label="Toggle Navigation">
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+        <span class="toggle-icon"></span>
+      </button>
+    </nav>
+  </header>
+  <main class="container user-dashboard">
     <h2>User Dashboard</h2>
     
     <div class="tab-buttons">
@@ -72,9 +96,45 @@
         </form>
       </div>
     </div>
-  </div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <div id="loadingMessage">Loading...</div>
+      </div>
+    </div>
+  </main>
 
   <script>
+    // Mobile navbar toggle
+    const toggleButton = document.querySelector('.navbar-toggle');
+    const navbarMenu = document.querySelector('.navbar-menu');
+
+    if (toggleButton && navbarMenu) {
+      toggleButton.addEventListener('click', () => {
+        navbarMenu.classList.toggle('active');
+      });
+
+      // Close mobile menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toggleButton.contains(e.target) && !navbarMenu.contains(e.target)) {
+          navbarMenu.classList.remove('active');
+        }
+      });
+
+      // Update active nav link based on current tab
+      function updateNavActiveState(tabName) {
+        document.querySelectorAll('.navbar-menu a').forEach(link => {
+          link.classList.remove('nav-active');
+        });
+        
+        const activeLink = document.querySelector(`.navbar-menu a[onclick="showTab('${tabName}')"]`);
+        if (activeLink) {
+          activeLink.classList.add('nav-active');
+        }
+      }
+    }
     const token = sessionStorage.getItem("token");
     if (!token) {
       alert("Unauthorized access. Please login first.");
@@ -298,12 +358,96 @@
     }
 
     // File action functions
-    function downloadFile(token) {
-      window.open(`/api/files/download/${token}`, '_blank');
+    async function downloadFile(token) {
+      try {
+        showLoader('Preparing download...');
+        
+        const response = await fetch(`/api/files/download/${token}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+          }
+        });
+        
+        hideLoader();
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Download failed');
+        }
+        
+        // Get filename from response headers or use default
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'download';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+      } catch (error) {
+        hideLoader();
+        console.error('Download error:', error);
+        alert('Download failed: ' + error.message);
+      }
     }
 
-    function downloadSharedFile(token) {
-      window.open(`/api/share/download/${token}`, '_blank');
+    async function downloadSharedFile(token) {
+      try {
+        showLoader('Preparing download...');
+        
+        const response = await fetch(`/api/share/download/${token}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+          }
+        });
+        
+        hideLoader();
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Download failed');
+        }
+        
+        // Get filename from response headers or use default
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'download';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+      } catch (error) {
+        hideLoader();
+        console.error('Shared file download error:', error);
+        alert('Download failed: ' + error.message);
+      }
     }
 
     async function viewSharedFile(token) {
@@ -416,10 +560,23 @@
       }
     });
 
-    function logout() {
-      sessionStorage.removeItem("token");
-      window.location.href = "/login.html";
-    }
+  
+function showLoader(message) {
+  const overlay = document.getElementById('loadingOverlay');
+  const loadingMessage = document.getElementById('loadingMessage');
+  loadingMessage.textContent = message || 'Loading...';
+  overlay.style.display = 'flex';
+}
+
+function hideLoader() {
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.style.display = 'none';
+}
+
+function logout() {
+    sessionStorage.removeItem("token");
+    window.location.href = "/login.html";
+  }
 
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', () => {
