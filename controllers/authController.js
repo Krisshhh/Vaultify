@@ -136,11 +136,7 @@ exports.verifyOtp = async (req, res) => {
       expiresIn: user.role === 'admin' ? '8h' : '1h',
     });
 
-    return res.status(200).json({ 
-      token, 
-      user: { id: user._id, username: user.username, role: user.role },
-      redirectTo: user.role === 'admin' ? '/admin-dashboard.html' : '/dashboard.html'
-    });
+    return res.status(200).json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (err) {
     res.status(500).json({ message: 'OTP verification failed', error: err.message });
   }

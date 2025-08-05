@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const fileRoutes = require('./routes/fileRoutes');
 const shareRoutes = require('./routes/shareRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const path = require('path');
 const fs = require('fs');
 
@@ -23,6 +24,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/share', shareRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Ensure uploads folder exists
 // if (!fs.existsSync('./uploads')) {
