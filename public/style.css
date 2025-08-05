@@ -28,15 +28,14 @@ body {
   color: var(--text-color);
   line-height: 1.6;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  margin: 0;
+  padding: 0;
 }
 
 .container {
   max-width: 800px;
   width: 100%;
+  margin: 0 auto;
   background: var(--card-background);
   padding: 40px;
   border-radius: var(--border-radius);
@@ -523,15 +522,16 @@ select {
 
 .with-navbar .container {
   flex: 1;
+  padding: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
 }
 
 .with-navbar .main-content {
   width: 100%;
   max-width: 800px;
+  margin: 0 auto;
   background: var(--card-background);
   padding: 40px;
   border-radius: var(--border-radius);
@@ -581,6 +581,7 @@ select {
 .home-layout .main-content {
   width: 100%;
   max-width: 1000px;
+  margin: 0 auto;
   background: var(--card-background);
   padding: 60px;
   border-radius: var(--border-radius);

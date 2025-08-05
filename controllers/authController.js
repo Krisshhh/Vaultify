@@ -54,6 +54,27 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if user is admin - if so, require OTP verification
+    if (user.role === 'admin') {
+      // Generate and send OTP for admin users
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      await Otp.create({
+        email,
+        code: otp,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
+
+      await sendOTP(email, otp);
+
+      return res.status(200).json({ 
+        requiresOtp: true, 
+        message: 'OTP sent to admin email',
+        email: email // Send email for frontend OTP verification
+      });
+    }
+
+    // For regular users, proceed with normal login
     // Update last login time
     user.lastLogin = new Date();
     await user.save();
@@ -90,13 +111,36 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ message: 'OTP expired' });
     }
 
-    await Otp.deleteMany({ email });
+    // Find the user to check their role
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
 
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+    await Otp.deleteMany({ email });
+    
+    // Update last login and track analytics
+    user.lastLogin = new Date();
+    await user.save();
+    
+    await Analytics.create({
+      userId: user._id,
+      eventType: 'user_login',
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
     });
 
-    return res.status(200).json({ token });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: user.role === 'admin' ? '8h' : '1h',
+    });
+
+    return res.status(200).json({ 
+      token, 
+      user: { id: user._id, username: user.username, role: user.role },
+      redirectTo: user.role === 'admin' ? '/admin-dashboard.html' : '/dashboard.html'
+    });
   } catch (err) {
     res.status(500).json({ message: 'OTP verification failed', error: err.message });
   }
