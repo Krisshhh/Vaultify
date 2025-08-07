@@ -14,16 +14,41 @@ function encryptFile(filePath, destinationPath, secretKey) {
 
 function encryptFileInMemory(buffer, secretKey) {
   return new Promise((resolve, reject) => {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
-    
-    let encrypted = Buffer.concat([iv]);
-    cipher.on('data', (chunk) => encrypted = Buffer.concat([encrypted, chunk]));
-    cipher.on('end', () => resolve(encrypted));
-    cipher.on('error', reject);
-    
-    cipher.write(buffer);
-    cipher.end();
+    try {
+      if (!buffer || !Buffer.isBuffer(buffer)) {
+        reject(new Error('Invalid buffer provided for encryption'));
+        return;
+      }
+      
+      if (!secretKey || secretKey.length !== 32) {
+        reject(new Error('Invalid secret key - must be 32 characters'));
+        return;
+      }
+      
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
+      
+      let encrypted = Buffer.concat([iv]);
+      
+      cipher.on('data', (chunk) => {
+        encrypted = Buffer.concat([encrypted, chunk]);
+      });
+      
+      cipher.on('end', () => {
+        resolve(encrypted);
+      });
+      
+      cipher.on('error', (error) => {
+        console.error('Cipher error:', error);
+        reject(error);
+      });
+      
+      cipher.write(buffer);
+      cipher.end();
+    } catch (error) {
+      console.error('Encryption setup error:', error);
+      reject(error);
+    }
   });
 }
 

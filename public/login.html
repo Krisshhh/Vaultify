@@ -152,7 +152,6 @@
         }
       } catch (err) {
         hideLoader();
-        console.error("Login error:", err);
         alert("Something went wrong");
         grecaptcha.reset();
       }
@@ -195,7 +194,6 @@
         }
       } catch (err) {
         hideLoader();
-        console.error("OTP verification error:", err);
         alert("Something went wrong during OTP verification");
       }
     });
@@ -217,11 +215,9 @@
             }, 100);
           }
         } else {
-          console.error('CAPTCHA site key not configured');
           document.getElementById('captcha-container').innerHTML = '<p style="color: red;">CAPTCHA not configured. Please set up your reCAPTCHA keys.</p>';
         }
       } catch (err) {
-        console.error('Failed to load CAPTCHA config:', err);
         document.getElementById('captcha-container').innerHTML = '<p style="color: red;">Failed to load CAPTCHA. Please refresh the page.</p>';
       }
     }

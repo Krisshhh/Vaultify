@@ -14,7 +14,12 @@ const {
 
 // Upload + Encrypt Controller
 exports.uploadFile = async (req, res) => {
+  const startTime = Date.now();
+  
   try {
+    // Set response timeout for Vercel
+    req.setTimeout(55000); // 55 seconds (Vercel limit is 60s for pro)
+
     const file = req.file;
     const userId = req.user?.id || null;
     const secretKey = process.env.ENCRYPTION_KEY;
@@ -24,18 +29,18 @@ exports.uploadFile = async (req, res) => {
     }
 
     if (!secretKey || secretKey.length !== 32) {
-      return res.status(500).json({ message: 'Invalid or missing ENCRYPTION_KEY in .env (must be 32 chars)' });
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    // Check AWS configuration
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_BUCKET_NAME) {
+      return res.status(500).json({ message: 'Server configuration error' });
     }
 
     const encryptedBuffer = await encryptFileInMemory(file.buffer, secretKey);
     const encryptedFilename = `enc-${crypto.randomUUID()}-${file.originalname}`;
 
-    console.log('Uploading to S3:', {
-      bucket: process.env.AWS_BUCKET_NAME,
-      key: encryptedFilename,
-      size: encryptedBuffer.length
-    });
-
+    // Upload to S3 with error handling
     await uploadFile(encryptedBuffer, encryptedFilename, file.mimetype);
 
     const fileDoc = new File({
@@ -50,33 +55,42 @@ exports.uploadFile = async (req, res) => {
 
     await fileDoc.save();
 
-    // Track upload analytics
-    await Analytics.create({
-      userId: req.user.id,
-      eventType: 'file_upload',
-      fileId: fileDoc._id,
-      metadata: {
-        fileSize: file.size,
-        fileType: file.mimetype,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+    // Track upload analytics (with error handling)
+    try {
+      await Analytics.create({
+        userId: req.user.id,
+        eventType: 'file_upload',
+        fileId: fileDoc._id,
+        metadata: {
+          fileSize: file.size,
+          fileType: file.mimetype,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        }
+      });
+    } catch (analyticsError) {
+      console.warn('Analytics tracking failed:', analyticsError.message);
+    }
+
+    // Track recent uploads (with error handling)
+    try {
+      await RecentUpload.create({
+        user: req.user.id,
+        originalName: req.file.originalname,
+        size: Math.ceil(req.file.size / 1024) 
+      });
+      
+      const recent = await RecentUpload.find({ user: req.user.id })
+        .sort({ createdAt: -1 })
+        .skip(5);
+
+      if (recent.length > 0) {
+        const idsToDelete = recent.map(doc => doc._id);
+        await RecentUpload.deleteMany({ _id: { $in: idsToDelete } });
       }
-    });
-
-    await RecentUpload.create({
-      user: req.user.id,
-      originalName: req.file.originalname,
-      size: Math.ceil(req.file.size / 1024) 
-    });
-    
-const recent = await RecentUpload.find({ user: req.user.id })
-  .sort({ createdAt: -1 })
-  .skip(5);
-
-if (recent.length > 0) {
-  const idsToDelete = recent.map(doc => doc._id);
-  await RecentUpload.deleteMany({ _id: { $in: idsToDelete } });
-}
+    } catch (recentUploadError) {
+      console.warn('Recent upload tracking failed:', recentUploadError.message);
+    }
     
 
     res.status(200).json({
@@ -87,12 +101,10 @@ if (recent.length > 0) {
   } catch (error) {
     console.error('Upload Error:', {
       message: error.message,
-      stack: error.stack,
       timestamp: new Date().toISOString()
     });
     res.status(500).json({ 
-      message: 'Upload failed',
-      error: error.message
+      message: 'Upload failed'
     });
   }
 };
@@ -152,12 +164,10 @@ exports.downloadFile = async (req, res) => {
   } catch (error) {
     console.error('Download Error:', {
       message: error.message,
-      stack: error.stack,
       timestamp: new Date().toISOString()
     });
     res.status(500).json({ 
-      message: 'Download failed',
-      error: error.message
+      message: 'Download failed'
     });
   }
 };

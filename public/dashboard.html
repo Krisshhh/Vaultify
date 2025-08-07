@@ -268,7 +268,6 @@
 
         document.getElementById('myFilesContainer').innerHTML = filesHTML;
       } catch (err) {
-        console.error('Error loading files:', err);
         document.getElementById('myFilesContainer').innerHTML = '<p>Error loading files.</p>';
       }
     }
@@ -310,7 +309,6 @@
 
         document.getElementById('sharedFilesContainer').innerHTML = sharedHTML;
       } catch (err) {
-        console.error('Error loading shared files:', err);
         document.getElementById('sharedFilesContainer').innerHTML = '<p>Error loading shared files.</p>';
       }
     }
@@ -352,7 +350,6 @@
 
         document.getElementById('mySharesContainer').innerHTML = sharesHTML;
       } catch (err) {
-        console.error('Error loading my shares:', err);
         document.getElementById('mySharesContainer').innerHTML = '<p>Error loading shares.</p>';
       }
     }
@@ -399,7 +396,6 @@
         
       } catch (error) {
         hideLoader();
-        console.error('Download error:', error);
         alert('Download failed: ' + error.message);
       }
     }
@@ -445,7 +441,6 @@
         
       } catch (error) {
         hideLoader();
-        console.error('Shared file download error:', error);
         alert('Download failed: ' + error.message);
       }
     }

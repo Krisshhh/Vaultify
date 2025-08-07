@@ -233,7 +233,6 @@
         
         document.getElementById('statsContainer').innerHTML = statsHtml;
       } catch (err) {
-        console.error('Error loading dashboard stats:', err);
         alert('Failed to load dashboard statistics');
       }
     }
@@ -271,7 +270,6 @@
         `).join('');
         
       } catch (err) {
-        console.error('Error loading users:', err);
         alert('Failed to load users');
       }
     }
@@ -290,7 +288,6 @@
           alert('Failed to update user role');
         }
       } catch (err) {
-        console.error('Error updating user role:', err);
         alert('Failed to update user role');
       }
     }
@@ -349,7 +346,6 @@
         
       } catch (err) {
         hideLoader();
-        console.error('Error loading analytics:', err);
         alert('Failed to load analytics');
       }
     }
@@ -376,7 +372,6 @@
         `;
         
       } catch (err) {
-        console.error('Error loading system health:', err);
         alert('Failed to load system health');
       }
     }

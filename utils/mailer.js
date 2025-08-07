@@ -20,7 +20,6 @@ exports.sendOTP = async (to, otp) => {
   await transporter.sendMail(mailOptions);
 };
 
-// console.log('Mailer Auth:', process.env.EMAIL_USER, process.env.EMAIL_PASS ? 'PASS PRESENT' : 'MISSING');
 exports.sendResetLink = async (to, resetToken) => {
   const resetUrl = `http://localhost:5000/reset_pwd.html?token=${resetToken}`;
   const mailOptions = {
