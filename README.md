@@ -1,6 +1,6 @@
 # 🔐 Vaultify - Secure File Storage & Sharing Platform
 
-A secure## 🔧 Admin Setup
+🔧 Admin Setup
 
 Create admin user in MongoDB:
 ```javascript
