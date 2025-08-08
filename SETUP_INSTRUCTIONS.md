@@ -91,35 +91,6 @@ db.users.updateOne(
 - Modal dialogs for file sharing
 - Real-time status updates
 
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - Regular user login (with CAPTCHA)
-- `POST /api/auth/admin/login` - Admin login (sends OTP)
-- `POST /api/auth/admin/verify-otp` - Admin OTP verification
-- `GET /api/auth/captcha-config` - Get CAPTCHA site key
-
-### File Management
-- `GET /api/files/my-files` - Get user's files
-- `DELETE /api/files/delete/:fileId` - Delete user's file
-- `GET /api/files/download/:token` - Download file
-
-### File Sharing
-- `POST /api/share/share` - Share file with user
-- `GET /api/share/received` - Get files shared with me
-- `GET /api/share/sent` - Get files I've shared
-- `GET /api/share/:token` - Access shared file details
-- `GET /api/share/:token/download` - Download shared file
-- `DELETE /api/share/:shareId` - Revoke file share
-
-### Admin Dashboard
-- `GET /api/admin/dashboard/stats` - Dashboard overview
-- `GET /api/admin/analytics/users` - User analytics
-- `GET /api/admin/analytics/files` - File analytics
-- `GET /api/admin/system/health` - System health
-- `GET /api/admin/users` - Get all users
-- `PUT /api/admin/users/:userId/role` - Update user role
-
 ## Performance Optimizations Applied
 
 1. **Database Indexing** - Added indexes on frequently queried fields
