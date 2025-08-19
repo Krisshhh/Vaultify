@@ -95,7 +95,14 @@ exports.uploadFile = async (req, res) => {
 
     res.status(200).json({
       message: 'File uploaded & encrypted successfully',
-      downloadLink: `/api/files/download/${fileDoc.downloadToken}`
+      downloadLink: `/api/files/download/${fileDoc.downloadToken}`,
+      file: {
+        id: fileDoc._id,
+        originalName: fileDoc.originalName,
+        size: fileDoc.size,
+        mimetype: fileDoc.mimetype,
+        downloadToken: fileDoc.downloadToken
+      }
     });
     
   } catch (error) {

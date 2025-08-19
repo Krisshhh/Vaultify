@@ -133,7 +133,153 @@ h1 {
   font-size: 0.9rem;
 }
 
-/* Form Styles */
+/* QR Code Access Styles */
+.qr-access-container {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 0;
+}
+
+.qr-access-content {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.qr-access-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  padding: 2rem;
+  text-align: center;
+}
+
+.qr-file-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.qr-access-body {
+  padding: 2rem;
+}
+
+.qr-file-details {
+  background: var(--background-color);
+  border-radius: var(--border-radius-small);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.qr-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.qr-detail-row:last-child {
+  border-bottom: none;
+}
+
+.qr-detail-label {
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.qr-detail-value {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.qr-shared-by {
+  background: var(--background-color);
+  border-radius: var(--border-radius-small);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.qr-access-info {
+  background: #e3f2fd;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--border-radius-small);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.qr-access-info.warning {
+  background: #fff3e0;
+  border-color: #ff9800;
+  color: #e65100;
+}
+
+.qr-download-section {
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.qr-download-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: var(--border-radius-small);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: var(--transition);
+}
+
+.qr-download-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+}
+
+.qr-error-page {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 3rem;
+  margin: 2rem auto;
+  max-width: 600px;
+  text-align: center;
+}
+
+.qr-error-content {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 2rem;
+  border-radius: var(--border-radius-small);
+  margin: 1.5rem 0;
+}
+
+.qr-warning-content {
+  background: #fffbeb;
+  border: 1px solid #fed7aa;
+  color: #d97706;
+  padding: 2rem;
+  border-radius: var(--border-radius-small);
+  margin: 1.5rem 0;
+}
+
+.qr-powered-by {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.9rem;
+  padding: 1rem;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1.5rem;
+}
+
+/* QR Code Access Styles */
 form {
   display: flex;
   flex-direction: column;

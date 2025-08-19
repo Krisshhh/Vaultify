@@ -26,6 +26,11 @@ app.use('/api/files', fileRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Special route for QR code access - serves the QR access page
+app.get('/qr/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'qr-access.html'));
+});
+
 // Ensure uploads folder exists
 // if (!fs.existsSync('./uploads')) {
 //   fs.mkdirSync('./uploads');

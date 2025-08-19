@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code File Share - Vaultify</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .qr-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+        
+        .qr-display {
+            text-align: center;
+            margin: 2rem 0;
+        }
+        
+        .qr-image {
+            max-width: 256px;
+            width: 100%;
+            height: auto;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .share-info {
+            background: var(--bg-light);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .share-info h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .copy-button, .download-qr-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .copy-button:hover, .download-qr-button:hover {
+            background: var(--primary-hover);
+        }
+        
+        .url-display {
+            background: var(--bg-light);
+            padding: 0.5rem;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c66;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #6c6;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .buttons-container {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>🔐 Vaultify</h2>
+            </div>
+            <div class="nav-links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="upload.html">Upload</a>
+                <a href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="qr-container" id="qrContainer">
+            <div class="loading" id="loading">
+                <h3>Loading QR Code...</h3>
+                <p>Please wait while we generate your QR code.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Get share ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get('shareId');
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        if (!shareId) {
+            document.getElementById('qrContainer').innerHTML = `
+                <div class="error">
+                    <h3>Invalid QR Code Link</h3>
+                    <p>No share ID provided. Please generate a new QR code from your dashboard.</p>
+                    <button onclick="window.location.href='dashboard.html'" class="copy-button">Go to Dashboard</button>
+                </div>
+            `;
+        } else {
+            loadQRCodeDetails();
+        }
+
+        async function loadQRCodeDetails() {
+            try {
+                const response = await fetch(`/api/share/qr-details/${shareId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load QR code details');
+                }
+
+                const data = await response.json();
+                displayQRCode(data);
+            } catch (error) {
+                console.error('Error loading QR code:', error);
+                document.getElementById('qrContainer').innerHTML = `
+                    <div class="error">
+                        <h3>Error Loading QR Code</h3>
+                        <p>${error.message}</p>
+                        <button onclick="window.location.href='dashboard.html'" class="copy-button">Go to Dashboard</button>
+                    </div>
+                `;
+            }
+        }
+
+        function displayQRCode(data) {
+            const container = document.getElementById('qrContainer');
+            const expiryDate = data.expiresAt ? new Date(data.expiresAt).toLocaleString() : 'Never';
+            
+            container.innerHTML = `
+                <h2>📱 QR Code File Share</h2>
+                
+                <div class="qr-display">
+                    <img src="${data.qrCode}" alt="QR Code" class="qr-image" id="qrImage">
+                    <div class="buttons-container">
+                        <button onclick="copyShareUrl()" class="copy-button">📋 Copy Share URL</button>
+                        <button onclick="downloadQRCode()" class="download-qr-button">💾 Download QR Code</button>
+                    </div>
+                </div>
+
+                <div class="share-info">
+                    <h3>📄 File Information</h3>
+                    <div class="info-row">
+                        <span><strong>Filename:</strong></span>
+                        <span>${data.file.filename}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Size:</strong></span>
+                        <span>${formatFileSize(data.file.size)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Type:</strong></span>
+                        <span>${data.file.mimetype}</span>
+                    </div>
+                </div>
+
+                <div class="share-info">
+                    <h3>🔗 Share Details</h3>
+                    <div class="info-row">
+                        <span><strong>Share URL:</strong></span>
+                        <span></span>
+                    </div>
+                    <div class="url-display" id="shareUrl">${data.shareUrl}</div>
+                    
+                    <div class="info-row">
+                        <span><strong>Access Count:</strong></span>
+                        <span>${data.accessInfo.currentAccess} / ${data.accessInfo.maxAccess}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Public Access:</strong></span>
+                        <span>${data.accessInfo.isPublic ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Expires:</strong></span>
+                        <span>${expiryDate}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Can Download:</strong></span>
+                        <span>${data.permissions.canDownload ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span><strong>Can View:</strong></span>
+                        <span>${data.permissions.canView ? 'Yes' : 'No'}</span>
+                    </div>
+                </div>
+
+                <div class="buttons-container">
+                    <button onclick="window.location.href='dashboard.html'" class="copy-button">🏠 Back to Dashboard</button>
+                    <button onclick="refreshQRCode()" class="copy-button">🔄 Refresh</button>
+                </div>
+            `;
+        }
+
+        function copyShareUrl() {
+            const shareUrl = document.getElementById('shareUrl').textContent;
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showMessage('Share URL copied to clipboard!', 'success');
+            }).catch(err => {
+                showMessage('Failed to copy URL', 'error');
+            });
+        }
+
+        function downloadQRCode() {
+            const qrImage = document.getElementById('qrImage');
+            const link = document.createElement('a');
+            link.download = 'vaultify-qr-share.png';
+            link.href = qrImage.src;
+            link.click();
+        }
+
+        function refreshQRCode() {
+            document.getElementById('qrContainer').innerHTML = `
+                <div class="loading">
+                    <h3>Refreshing QR Code...</h3>
+                </div>
+            `;
+            loadQRCodeDetails();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showMessage(message, type) {
+            const existingMsg = document.querySelector('.temp-message');
+            if (existingMsg) existingMsg.remove();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type} temp-message`;
+            messageDiv.textContent = message;
+            
+            const container = document.getElementById('qrContainer');
+            container.insertBefore(messageDiv, container.firstChild);
+            
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

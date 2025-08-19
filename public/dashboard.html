@@ -258,6 +258,9 @@
                   <button class="btn btn-small" onclick="shareFile('${file._id}')">
                     Share
                   </button>
+                  <button class="btn btn-small" onclick="generateQRCode('${file._id}')" style="background: #7c3aed;">
+                    📱 QR Share
+                  </button>
                   <button class="btn btn-small" onclick="deleteFile('${file._id}')" style="background: #dc2626;">
                     Delete
                   </button>
@@ -326,13 +329,21 @@
         }
 
         const sharesHTML = data.mySharedFiles.length > 0
-          ? data.mySharedFiles.map(share => `
+          ? data.mySharedFiles.map(share => {
+              const hasQR = share.qrInfo && share.qrInfo.hasQR;
+              const shareTypeIcon = hasQR ? '📱' : '👤';
+              const shareTypeText = share.shareType === 'qr' ? 'QR Only' : 
+                                   share.shareType === 'both' ? 'User + QR' : 'User Only';
+              
+              return `
               <div class="file-item">
                 <div class="file-info">
-                  <div class="file-name">${share.fileId.originalName}</div>
+                  <div class="file-name">${shareTypeIcon} ${share.fileId.originalName}</div>
                   <div class="file-meta">
-                    Shared with: ${share.sharedWith.username} (${share.sharedWith.email}) •
+                    ${share.sharedWith ? `Shared with: ${share.sharedWith.username} (${share.sharedWith.email}) • ` : ''}
+                    Type: ${shareTypeText} • 
                     Downloads: ${share.downloadCount} • 
+                    ${hasQR ? `QR Access: ${share.qrInfo.accessCount}/${share.qrInfo.maxAccess} • ` : ''}
                     Created: ${new Date(share.createdAt).toLocaleDateString()}
                   </div>
                 </div>
@@ -340,12 +351,18 @@
                   <button class="btn btn-small" onclick="copyShareLink('${share.shareToken}')">
                     Copy Link
                   </button>
+                  ${hasQR ? `
+                    <button class="btn btn-small" onclick="viewQRCode('${share._id}')" style="background: #7c3aed;">
+                      View QR
+                    </button>
+                  ` : ''}
                   <button class="btn btn-small" onclick="revokeShare('${share._id}')" style="background: #dc2626;">
                     Revoke
                   </button>
                 </div>
               </div>
-            `).join('')
+            `;
+          }).join('')
           : '<p>You haven\'t shared any files yet.</p>';
 
         document.getElementById('mySharesContainer').innerHTML = sharesHTML;
@@ -555,7 +572,108 @@
       }
     });
 
-  
+  // QR Code Functions
+  async function generateQRCode(fileId) {
+    const qrOptions = prompt(`Generate QR Code for file sharing:
+
+Options (JSON format):
+{
+  "isPublic": true/false,
+  "maxAccess": number or null,
+  "expiresIn": days or null
+}
+
+Enter options (or leave empty for defaults):`);
+
+    let options = {
+      fileId,
+      generateQR: true,
+      isPublic: false,
+      maxAccess: null,
+      expiresIn: null,
+      permissions: { canDownload: true, canView: true }
+    };
+
+    if (qrOptions && qrOptions.trim()) {
+      try {
+        const userOptions = JSON.parse(qrOptions);
+        options = { ...options, ...userOptions };
+      } catch (e) {
+        alert('Invalid JSON format. Using default options.');
+      }
+    }
+
+    try {
+      showLoader('Generating QR code...');
+      
+      const res = await makeAuthRequest('/api/share/generate-qr', {
+        method: 'POST',
+        body: JSON.stringify(options)
+      });
+
+      hideLoader();
+
+      if (res && res.ok) {
+        const data = await res.json();
+        
+        // Open QR code display in a new window/tab
+        const qrWindow = window.open('', '_blank', 'width=600,height=700');
+        qrWindow.document.write(`
+          <html>
+            <head>
+              <title>QR Code - Vaultify</title>
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                .qr-container { max-width: 400px; margin: 0 auto; }
+                .qr-image { max-width: 256px; border: 2px solid #ddd; border-radius: 8px; }
+                .share-url { background: #f5f5f5; padding: 10px; border-radius: 4px; word-break: break-all; margin: 10px 0; }
+                .btn { background: #7c3aed; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+              </style>
+            </head>
+            <body>
+              <div class="qr-container">
+                <h2>📱 QR Code Generated</h2>
+                <img src="${data.qrCode}" class="qr-image" alt="QR Code">
+                <div class="share-url">${data.qrShareUrl || data.shareUrl}</div>
+                <button class="btn" onclick="navigator.clipboard.writeText('${data.qrShareUrl || data.shareUrl}').then(() => alert('URL copied!'))">Copy URL</button>
+                <button class="btn" onclick="window.close()">Close</button>
+              </div>
+            </body>
+          </html>
+        `);
+        
+        loadMyShares(); // Reload shares to show the new QR share
+      } else {
+        const data = await res.json();
+        throw new Error(data.message);
+      }
+    } catch (err) {
+      hideLoader();
+      alert('Failed to generate QR code: ' + err.message);
+    }
+  }
+
+  async function viewQRCode(shareId) {
+    try {
+      showLoader('Loading QR code...');
+      
+      const res = await makeAuthRequest(`/api/share/qr-details/${shareId}`);
+      
+      hideLoader();
+
+      if (res && res.ok) {
+        const data = await res.json();
+        window.open(`qr-share.html?shareId=${shareId}`, '_blank');
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.message);
+      }
+    } catch (err) {
+      hideLoader();
+      alert('Failed to load QR code: ' + err.message);
+    }
+  }
+
 function showLoader(message) {
   const overlay = document.getElementById('loadingOverlay');
   const loadingMessage = document.getElementById('loadingMessage');
